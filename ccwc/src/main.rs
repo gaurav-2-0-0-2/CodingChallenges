@@ -4,12 +4,21 @@ use std::io::{BufReader, Read};
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 2{
-        eprintln!("Usage: {}", args[0]);
-        std::process::exit(1);
+
+    if args.len() < 2 {
+      eprintln!("Usage: {}", args[0]);
+      std::process::exit(1);
     }
+
+    //let filename = &args[1];
+
+    let filename = if args.len() == 2 {
+        &args[1]
+    }else{
+        &args[2]
+    };
+
     // Taking file name from the vector args
-    let filename = &args[2];
     let file = File::open(filename)?;
     let metadata = file.metadata()?;
     let mut buf_reader = BufReader::new(file);
@@ -34,12 +43,8 @@ fn main() -> std::io::Result<()> {
         println!("{} {}", word_count, filename);
     }else if args[1] == "-m"{
         println!("{} {}", char_count, filename);
-    }else if args[1].to_lowercase() == filename.to_lowercase() {
-        println!("{} {} {} {} {}", count_lines, word_count, byte_size, char_count, filename);
-    }
-    else {
-        eprintln!("Wrong option: {}", args[1]);
-        std::process::exit(1);
+    }else{
+        println!("{} {} {} {} {}", count_lines, byte_size, word_count, char_count, filename);
     }
 
     Ok(())
