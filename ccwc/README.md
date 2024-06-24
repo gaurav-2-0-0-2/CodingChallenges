@@ -10,5 +10,3 @@ cargo build --release
 sudo cp ./target/release/ccwc ~/bin/
 ```
 **note:** Create a home/{yourusername}/bin if not exist 
-
-Need heavy improvements 
