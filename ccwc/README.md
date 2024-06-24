@@ -1,7 +1,5 @@
 # This is wc unix cli tool in rust
 
-This might be the worst implementation of unix wc command :-}
-
 ## build from source already
 
 ```
