@@ -10,8 +10,6 @@ fn main() -> std::io::Result<()> {
       std::process::exit(1);
     }
 
-    //let filename = &args[1];
-
     let filename = if args.len() == 2 {
         &args[1]
     }else{
@@ -24,7 +22,6 @@ fn main() -> std::io::Result<()> {
     let mut buf_reader = BufReader::new(file);
     let mut contents = String::new();
     buf_reader.read_to_string(&mut contents)?;
-    //println!("{}", contents);
     let mut count_lines = 0;
     let mut word_count = 0;
     let byte_size = metadata.len();
