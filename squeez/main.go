@@ -21,8 +21,6 @@ func main(){
 
 	defer f.Close()
 
-	m = make(map[string]int)
-
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		fmt.Println("count =", utf8.RuneCountInString(scanner.Text()))
