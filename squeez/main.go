@@ -9,45 +9,69 @@ import(
  "container/heap"
 )
 
-type Item struct {
-	key rune
-	priority int
-	index int
+type HuffTree interface {
+	Freq() int
 }
 
-type PriorityQueue []*Item
+type LeafNode struct {
+	char rune 
+	freq int
+}
+
+type HuffNode struct {
+	freq int
+	left_child, right_child HuffTree
+}
+
+func (self LeafNode) Freq() int{
+	return self.freq
+}
+
+func (self HuffNode) Freq() int{
+	return self.freq
+}
+
+type PriorityQueue []HuffTree
 
 func (pq PriorityQueue) Len() int {return len(pq)}
 
 // This is a min heap: item with lowest priority comes first
 // So when we call Pop() on pq we will get the lowest frequency character
 func (pq PriorityQueue) Less(i, j int) bool {
-	return pq[i].priority < pq[j].priority
+	return pq[i].Freq() < pq[j].Freq()
 }
 
 func (pq PriorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].index = i
-	pq[j].index = j
 }
 
-func (pq *PriorityQueue) Push(x any) {
+func (pq *PriorityQueue) Push(x interface{}) {
+	*pq = append(*pq, x.(HuffTree))
+}
+
+func (pq *PriorityQueue) Pop() (x interface{}) {
 	n := len(*pq)
-	item := x.(*Item)
-	item.index = n 
-	*pq = append(*pq, item)
+	x = (*pq)[n-1]
+	*pq = (*pq)[:n-1]
+	return 
 }
 
-func (pq *PriorityQueue) Pop() any {
-	old := *pq	
-	n := len(old)
-	item := old[n-1]
-	old[0] = old[n-1]
-	old[n-1] = nil
-	item.index = -1
-	*pq = old[0: n-1]
-	heap.Fix(pq, 0)
-	return item
+func BuildTree(m map[rune]int) HuffTree {
+	trees := make(PriorityQueue, 0)
+	
+	for char, freq := range m {
+		trees = append(trees, LeafNode{char, freq})
+	}
+
+	heap.Init(&trees)
+
+	for trees.Len()>1{
+		tree1 := heap.Pop(&trees).(HuffTree)
+		tree2 := heap.Pop(&trees).(HuffTree)
+		heap.Push(&trees, &HuffNode{tree1.Freq() + tree2.Freq(), tree1, tree2 })
+	}
+
+	return heap.Pop(&trees).(HuffTree)
 }
 
 func CountOccurrences(file io.Reader) map[rune]int {
@@ -65,7 +89,6 @@ func CountOccurrences(file io.Reader) map[rune]int {
 	}
 
 	return m
-
 }
 
 func main(){
@@ -83,34 +106,5 @@ func main(){
 
 	frequencyMap := CountOccurrences(f)
 
-	for char, count := range frequencyMap {
-		fmt.Printf("%c: %d\n", char, count)
-	}
-
-	// build a binary tree from the occurrence table
-	// minimum external path weight
-	// if frequency of the letter is higher than the leaf node representing that letter will be on lesser depth
-	// or a letter with high weight should have a low depth
-	// weighted path length of a leaf: weight * depth 
-
-	// Process: Building Huffman tree for n letters
-	// creating a priority queue (min-heap)
-	// lower frequency on the root node
-	pq := make(PriorityQueue, len(frequencyMap))
-	i := 0
-	for char, frequency := range frequencyMap{
-		pq[i] = &Item{
-			key: char,
-			priority: frequency,
-			index: i,
-		}
-		i++
-	}
-	heap.Init(&pq)
-	
-	if pq.Len() > 0 {
-		item1 := heap.Pop(&pq).(*Item)
-		fmt.Printf("Removed first lowest frequency element: %c: %d\n", item1.key, item1.priority)
-	}
-
+	BuildTree(frequencyMap)
 }
