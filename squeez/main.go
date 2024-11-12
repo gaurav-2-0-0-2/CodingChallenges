@@ -105,12 +105,10 @@ func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[ru
 	case LeafNode:
 		encoder[t.char] = string(prefix)
 	case HuffNode:
-		prefix = append(prefix, '0')
-		GenerateCodes(t.left_child, prefix, encoder)
+		GenerateCodes(t.left_child, append(prefix, '0'), encoder)
 		prefix = prefix[:len(prefix)-1]
 
-		prefix = append(prefix, '1')
-		GenerateCodes(t.right_child, prefix, encoder)
+		GenerateCodes(t.right_child, append(prefix, '1'), encoder)
 		prefix = prefix[:len(prefix)-1]
 	}
 	return encoder
@@ -136,7 +134,10 @@ func main(){
 		fmt.Printf("%c: %d\n", char, freq)
 	}
 
-	tree := BuildTree(frequencyMap)
-	encoderMap := GenerateCodes(tree, []byte{}, make(map[rune]string))
-	fmt.Println(encoderMap)
+	huffManTree := BuildTree(frequencyMap)
+	fmt.Printf("Encoder Map\n")
+	encoderMap := GenerateCodes(huffManTree, []byte{}, make(map[rune]string))
+	for char, prefixCode := range encoderMap {
+		fmt.Printf("char: %c, value: %s\n", char, prefixCode)
+	}
 }
