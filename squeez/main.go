@@ -100,6 +100,22 @@ func CountOccurrences(file io.Reader) map[rune]int {
 	return m
 }
 
+func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[rune]string{
+	switch t := tree.(type) {
+	case LeafNode:
+		encoder[t.char] = string(prefix)
+	case HuffNode:
+		prefix = append(prefix, '0')
+		GenerateCodes(t.left_child, prefix, encoder)
+		prefix = prefix[:len(prefix)-1]
+
+		prefix = append(prefix, '1')
+		GenerateCodes(t.right_child, prefix, encoder)
+		prefix = prefix[:len(prefix)-1]
+	}
+	return encoder
+}
+
 func main(){
 	args := os.Args
 	if len(args) == 1 {
@@ -120,5 +136,7 @@ func main(){
 		fmt.Printf("%c: %d\n", char, freq)
 	}
 
-	BuildTree(frequencyMap)
+	tree := BuildTree(frequencyMap)
+	encoderMap := GenerateCodes(tree, []byte{}, make(map[rune]string))
+	fmt.Println(encoderMap)
 }
