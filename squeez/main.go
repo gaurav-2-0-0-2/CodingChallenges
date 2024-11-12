@@ -64,14 +64,6 @@ func BuildTree(m map[rune]int) HuffTree {
 	}
 
 	heap.Init(&trees)
-	
-	fmt.Printf("Initial Priority Queue:\n")
-	for _, tree := range trees {
-		switch t := tree.(type) {
-		case LeafNode: 
-			fmt.Printf("Leaf:%c Freq: %d\n", t.char, t.freq)
-		}
-	}
 
 	for trees.Len()>1{
 		tree1 := heap.Pop(&trees).(HuffTree)
@@ -111,29 +103,42 @@ func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[ru
 }
 
 func main(){
-	args := os.Args
-	if len(args) == 1 {
-		fmt.Println("Provide argument")
+	args := os.Args[1:]
+
+	Flag := args[0]
+	//outputFile := args[2]
+
+	switch Flag {
+	case "-e":
+		f, err := os.Open(args[1])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		defer f.Close()
+
+		frequencyMap := CountOccurrences(f)
+
+		huffManTree := BuildTree(frequencyMap)
+		fmt.Printf("Encoder Map\n")
+		encoderMap := GenerateCodes(huffManTree, []byte{}, make(map[rune]string))
+		for char, prefixCodes := range encoderMap {
+			fmt.Printf("%c: %s\n", char, prefixCodes)
+		}
+	case "-o":
+		// Decoding part
+		fmt.Println("this is an -o flag")
+	case "-h":
+		fmt.Println("Guide to use Squeez:")
+		fmt.Println("squeez [OPTION] [INPUT FILENAME] [OUTPUT FILENAME]")
+		fmt.Println("Available Options")
+		fmt.Println("-h: Help")
+		fmt.Println("-e: Encoding the file")
+		fmt.Println("-o: Decoding the file in an output file")
+	default:
+		fmt.Println("not enough arguments")
+		fmt.Println("run this command for help: squeez -h")
 	}
 
-	f, err := os.Open(args[1])
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	defer f.Close()
-
-	frequencyMap := CountOccurrences(f)
-
-	fmt.Printf("Frequency Map\n")
-	for char, freq := range frequencyMap {
-		fmt.Printf("%c: %d\n", char, freq)
-	}
-
-	huffManTree := BuildTree(frequencyMap)
-	fmt.Printf("Encoder Map\n")
-	encoderMap := GenerateCodes(huffManTree, []byte{}, make(map[rune]string))
-	for char, prefixCodes := range encoderMap {
-		fmt.Printf("%c: %s\n", char, prefixCodes)
-	}
 }
