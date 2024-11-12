@@ -74,15 +74,9 @@ func BuildTree(m map[rune]int) HuffTree {
 	}
 
 	for trees.Len()>1{
-		fmt.Println("First tree popped:")
 		tree1 := heap.Pop(&trees).(HuffTree)
-		PrintTree(tree1, 0)
-		fmt.Println("Second tree popped:")
 		tree2 := heap.Pop(&trees).(HuffTree)
-		PrintTree(tree2, 0)
-		fmt.Println("Node after adding first two popped trees's frequency:")
 		internalNode := &HuffNode{tree1.Freq() + tree2.Freq(), tree1, tree2 }
-		PrintTree(internalNode, 0)
 		heap.Push(&trees, internalNode)
 	}
 
@@ -106,17 +100,6 @@ func CountOccurrences(file io.Reader) map[rune]int {
 	return m
 }
 
-func PrintTree(tree HuffTree, indent int) {
-	switch t := tree.(type) {
-	case LeafNode:
-		fmt.Printf("%*sLeaf: %c (Freq: %d)\n", indent, "", t.char, t.freq)
-	case *HuffNode:
-		fmt.Printf("%*sNode (Freq: %d)\n", indent, "", t.freq)
-		PrintTree(t.left_child, indent+2)
-		PrintTree(t.right_child, indent+2)
-	}
-}
-
 func main(){
 	args := os.Args
 	if len(args) == 1 {
@@ -137,7 +120,5 @@ func main(){
 		fmt.Printf("%c: %d\n", char, freq)
 	}
 
-	huffManTree := BuildTree(frequencyMap)
-	fmt.Println("\nBuilt Huffman Tree:")
-	PrintTree(huffManTree,0)
+	BuildTree(frequencyMap)
 }
