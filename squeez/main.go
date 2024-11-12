@@ -76,10 +76,9 @@ func BuildTree(m map[rune]int) HuffTree {
 	for trees.Len()>1{
 		tree1 := heap.Pop(&trees).(HuffTree)
 		tree2 := heap.Pop(&trees).(HuffTree)
-		internalNode := &HuffNode{tree1.Freq() + tree2.Freq(), tree1, tree2 }
+		internalNode := HuffNode{tree1.Freq() + tree2.Freq(), tree1, tree2 }
 		heap.Push(&trees, internalNode)
 	}
-
 	return heap.Pop(&trees).(HuffTree)
 }
 
@@ -106,10 +105,7 @@ func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[ru
 		encoder[t.char] = string(prefix)
 	case HuffNode:
 		GenerateCodes(t.left_child, append(prefix, '0'), encoder)
-		prefix = prefix[:len(prefix)-1]
-
 		GenerateCodes(t.right_child, append(prefix, '1'), encoder)
-		prefix = prefix[:len(prefix)-1]
 	}
 	return encoder
 }
@@ -137,7 +133,7 @@ func main(){
 	huffManTree := BuildTree(frequencyMap)
 	fmt.Printf("Encoder Map\n")
 	encoderMap := GenerateCodes(huffManTree, []byte{}, make(map[rune]string))
-	for char, prefixCode := range encoderMap {
-		fmt.Printf("char: %c, value: %s\n", char, prefixCode)
+	for char, prefixCodes := range encoderMap {
+		fmt.Printf("%c: %s\n", char, prefixCodes)
 	}
 }
