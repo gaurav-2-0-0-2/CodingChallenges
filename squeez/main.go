@@ -1,39 +1,45 @@
 package main
 
-import(
- "bufio"
- "fmt"
- "os"
- "log"
- "io"
- "container/heap"
+import (
+	"bufio"
+	"container/heap"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"os"
 )
+
+const HEADER_SEPARATER = "\nEND OF HEADER\n"
+const HELP_MESSAGE = "Guide to use Squeez:\n" +
+	"squeez [OPTION] [INPUT FILENAME] [OUTPUT FILENAME]\n" +
+	"Available Options\n -h: Help\n -e: Encoding the file\n -o: Decoding the file in an output file\n"
 
 type HuffTree interface {
 	Freq() int
 }
 
 type LeafNode struct {
-	char rune 
+	char rune
 	freq int
 }
 
 type HuffNode struct {
-	freq int
+	freq                    int
 	left_child, right_child HuffTree
 }
 
-func (self LeafNode) Freq() int{
+func (self LeafNode) Freq() int {
 	return self.freq
 }
 
-func (self HuffNode) Freq() int{
+func (self HuffNode) Freq() int {
 	return self.freq
 }
 
 type PriorityQueue []HuffTree
 
-func (pq PriorityQueue) Len() int {return len(pq)}
+func (pq PriorityQueue) Len() int { return len(pq) }
 
 // This is a min heap: item with lowest priority comes first
 // So when we call Pop() on pq we will get the lowest frequency character
@@ -53,22 +59,21 @@ func (pq *PriorityQueue) Pop() (x interface{}) {
 	n := len(*pq)
 	x = (*pq)[n-1]
 	*pq = (*pq)[:n-1]
-	return 
+	return
 }
 
 func BuildTree(m map[rune]int) HuffTree {
 	trees := make(PriorityQueue, 0)
-	
 	for char, freq := range m {
 		trees = append(trees, LeafNode{char, freq})
 	}
 
 	heap.Init(&trees)
 
-	for trees.Len()>1{
+	for trees.Len() > 1 {
 		tree1 := heap.Pop(&trees).(HuffTree)
 		tree2 := heap.Pop(&trees).(HuffTree)
-		internalNode := HuffNode{tree1.Freq() + tree2.Freq(), tree1, tree2 }
+		internalNode := HuffNode{tree1.Freq() + tree2.Freq(), tree1, tree2}
 		heap.Push(&trees, internalNode)
 	}
 	return heap.Pop(&trees).(HuffTree)
@@ -79,8 +84,8 @@ func CountOccurrences(file io.Reader) map[rune]int {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		for _,char := range(scanner.Text()){
-				m[char] += 1
+		for _, char := range scanner.Text() {
+			m[char] += 1
 		}
 	}
 
@@ -91,7 +96,7 @@ func CountOccurrences(file io.Reader) map[rune]int {
 	return m
 }
 
-func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[rune]string{
+func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[rune]string {
 	switch t := tree.(type) {
 	case LeafNode:
 		encoder[t.char] = string(prefix)
@@ -102,14 +107,66 @@ func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[ru
 	return encoder
 }
 
-func main(){
+func WriteToFile(fileContent interface{}, filename string) {
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer f.Close()
+
+	var data string
+	switch v := fileContent.(type) {
+	case string:
+		data = v
+	case []byte:
+		data = string(v)
+	default:
+		fmt.Println("fileContent must be of type string or []byte")
+	}
+
+	_, write_err := f.WriteString(data)
+	if write_err != nil {
+		log.Fatal(write_err)
+	}
+}
+
+func WriteHeader(filename string, encoderMap map[rune]string) {
+	mapJSON := make(map[rune]string)
+	for key, value := range encoderMap {
+		mapJSON[key] = value
+	}
+
+	jsonData, err := json.Marshal(mapJSON)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err_writing_header := os.WriteFile(filename, jsonData, 0644)
+	if err_writing_header != nil {
+		log.Fatal(err)
+	}
+
+	WriteToFile(HEADER_SEPARATER, filename)
+}
+
+func main() {
 	args := os.Args[1:]
+	if len(args) == 0 {
+		fmt.Println("Error: Insufficient arguments.")
+		fmt.Println("run this command for help: squeez -h")
+		return
+	}
 
 	Flag := args[0]
-	//outputFile := args[2]
 
 	switch Flag {
 	case "-e":
+		if len(args) < 3 {
+			fmt.Println("Error: Missing input or output file.")
+			fmt.Println("Run this command for help: squeez -h")
+			return
+		}
 		f, err := os.Open(args[1])
 		if err != nil {
 			log.Fatal(err)
@@ -120,25 +177,21 @@ func main(){
 		frequencyMap := CountOccurrences(f)
 
 		huffManTree := BuildTree(frequencyMap)
+
 		fmt.Printf("Encoder Map\n")
 		encoderMap := GenerateCodes(huffManTree, []byte{}, make(map[rune]string))
-		for char, prefixCodes := range encoderMap {
-			fmt.Printf("%c: %s\n", char, prefixCodes)
-		}
+		//for char, prefixCodes := range encoderMap {
+		//	fmt.Printf("%c: %s\n", char, prefixCodes)
+		//}
+
+		WriteHeader(args[2], encoderMap)
 	case "-o":
 		// Decoding part
 		fmt.Println("this is an -o flag")
 	case "-h":
-		fmt.Println("Guide to use Squeez:")
-		fmt.Println("squeez [OPTION] [INPUT FILENAME] [OUTPUT FILENAME]")
-		fmt.Println("Available Options")
-		fmt.Println("-h: Help")
-		fmt.Println("-e: Encoding the file")
-		fmt.Println("-o: Decoding the file in an output file")
+		fmt.Printf(HELP_MESSAGE)
 	default:
-		fmt.Println("not enough arguments")
+		fmt.Println("Unrecognized flag:", Flag)
 		fmt.Println("run this command for help: squeez -h")
 	}
-
-
 }
