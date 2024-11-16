@@ -79,23 +79,6 @@ func BuildTree(m map[rune]int) HuffTree {
 	return heap.Pop(&trees).(HuffTree)
 }
 
-func CountOccurrences(file io.Reader) map[rune]int {
-	m := make(map[rune]int)
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		for _, char := range scanner.Text() {
-			m[char] += 1
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	return m
-}
-
 func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[rune]string {
 	switch t := tree.(type) {
 	case LeafNode:
@@ -150,6 +133,38 @@ func WriteHeader(filename string, encoderMap map[rune]string) {
 	WriteToFile(HEADER_SEPARATER, filename)
 }
 
+func CountOccurences(file io.Reader) map[rune]int {
+		m := make(map[rune]int)
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			for _, char := range scanner.Text() {
+				m[char] += 1
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Fatal(err)
+		}
+
+		return m
+}
+
+func EncodeFile(file io.Reader, encoderMap map[rune]string) string{
+		scanner := bufio.NewScanner(file)
+		var data string
+		for scanner.Scan() {
+			for _, char := range scanner.Text() {
+				data += encoderMap[char]
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Fatal(err)
+		}
+
+		return data
+}
+
 func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
@@ -174,17 +189,25 @@ func main() {
 
 		defer f.Close()
 
-		frequencyMap := CountOccurrences(f)
+		frequencyMap := CountOccurences(f)
+
+		fmt.Println("Frequency Map")
+		for char, freq := range frequencyMap{
+			fmt.Printf("%c: %d\n",char, freq)
+		}
 
 		huffManTree := BuildTree(frequencyMap)
 
 		fmt.Printf("Encoder Map\n")
 		encoderMap := GenerateCodes(huffManTree, []byte{}, make(map[rune]string))
-		//for char, prefixCodes := range encoderMap {
-		//	fmt.Printf("%c: %s\n", char, prefixCodes)
-		//}
 
+		for char, prefixcode := range encoderMap{
+			fmt.Printf("%c: %s\n",char, prefixcode)
+		}
+		
 		WriteHeader(args[2], encoderMap)
+		encodedData := EncodeFile(f,encoderMap)
+		fmt.Println(encodedData)
 	case "-o":
 		// Decoding part
 		fmt.Println("this is an -o flag")
