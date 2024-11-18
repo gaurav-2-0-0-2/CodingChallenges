@@ -5,7 +5,6 @@ import (
 	"container/heap"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 )
@@ -91,6 +90,7 @@ func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[ru
 }
 
 func WriteToFile(fileContent interface{}, filename string) {
+	fmt.Println("fileContent to write to file: ", fileContent)
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -98,20 +98,22 @@ func WriteToFile(fileContent interface{}, filename string) {
 
 	defer f.Close()
 
-	var data string
 	switch v := fileContent.(type) {
 	case string:
-		data = v
+		_, write_err := f.WriteString(v)
+		if write_err != nil {
+			log.Fatal(err)
+		}
 	case []byte:
-		data = string(v)
+		_, err := f.Write(v)
+		if err != nil {
+			log.Fatal(err)
+		}
 	default:
 		fmt.Println("fileContent must be of type string or []byte")
 	}
 
-	_, write_err := f.WriteString(data)
-	if write_err != nil {
-		log.Fatal(write_err)
-	}
+	fmt.Println("Data written successfully to file")
 }
 
 func WriteHeader(filename string, encoderMap map[rune]string) {
@@ -133,7 +135,7 @@ func WriteHeader(filename string, encoderMap map[rune]string) {
 	WriteToFile(HEADER_SEPARATER, filename)
 }
 
-func CountOccurences(file io.Reader) map[rune]int {
+func CountOccurences(file *os.File) map[rune]int {
 		m := make(map[rune]int)
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
@@ -149,20 +151,44 @@ func CountOccurences(file io.Reader) map[rune]int {
 		return m
 }
 
-func EncodeFile(file io.Reader, encoderMap map[rune]string) string{
+func packBitsIntoByte(bitstring string, outputFile string){
+  	lenB := len(bitstring) / 8 + 1
+    bs:=make([]byte,lenB)
+
+    count,i := 0,0
+    var now byte
+    for _,v:=range bitstring {
+        if count == 8 {
+            bs[i]=now
+            i++
+            now,count = 0,0
+        }
+        now = now << 1 + byte(v-'0')
+        count++
+    }
+    if count!=0 {
+        bs[i]=now << (8-byte(count))
+        i++
+    }
+
+    bs=bs[:i:i]
+	fmt.Println("Byte array", bs)
+	WriteToFile(bs, outputFile)
+}
+
+func EncodeFile(file *os.File, outputFile string, encoderMap map[rune]string) {
+		var encodedData string
 		scanner := bufio.NewScanner(file)
-		var data string
 		for scanner.Scan() {
 			for _, char := range scanner.Text() {
-				data += encoderMap[char]
+				encodedData += encoderMap[char]	
 			}
 		}
 
 		if err := scanner.Err(); err != nil {
 			log.Fatal(err)
 		}
-
-		return data
+		packBitsIntoByte(encodedData, outputFile)
 }
 
 func main() {
@@ -206,8 +232,13 @@ func main() {
 		}
 		
 		WriteHeader(args[2], encoderMap)
-		encodedData := EncodeFile(f,encoderMap)
-		fmt.Println(encodedData)
+
+		// Rewind the file for the second pass
+		_, err = f.Seek(0, 0) // Reset file pointer to the beginning
+		if err != nil {
+			log.Fatal(err)
+		}
+		EncodeFile(f, args[2], encoderMap)
 	case "-o":
 		// Decoding part
 		fmt.Println("this is an -o flag")
