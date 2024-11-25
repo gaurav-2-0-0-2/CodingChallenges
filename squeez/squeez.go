@@ -152,28 +152,21 @@ func CountOccurences(file *os.File) map[rune]int {
 }
 
 func packBitsIntoByte(bitstring string, outputFile string){
-  	lenB := len(bitstring) / 8 + 1
-    bs:=make([]byte,lenB)
-
-    count,i := 0,0
-    var now byte
-    for _,v:=range bitstring {
-        if count == 8 {
-            bs[i]=now
-            i++
-            now,count = 0,0
-        }
-        now = now << 1 + byte(v-'0')
-        count++
-    }
-    if count!=0 {
-        bs[i]=now << (8-byte(count))
-        i++
-    }
-
-    bs=bs[:i:i]
-	fmt.Println("Byte array", bs)
-	WriteToFile(bs, outputFile)
+	var src []byte = []byte(bitstring)
+	var dst []byte = make([]byte, (len(src) + 7) / 8)
+	var bitMask byte = 1
+	bitCounter := 0
+	for b := 0; b < len(bitstring)/8; b++ {
+		for bit := 0; bit < 8; bit++ {
+			if bitCounter < len(src){
+				dst[b] |= (src[bitCounter] & bitMask) << (7 - bit)
+				bitCounter++
+			}else{
+				break
+			}
+		}
+	}
+	WriteToFile(dst, outputFile)
 }
 
 func EncodeFile(file *os.File, outputFile string, encoderMap map[rune]string) {
@@ -189,6 +182,10 @@ func EncodeFile(file *os.File, outputFile string, encoderMap map[rune]string) {
 			log.Fatal(err)
 		}
 		packBitsIntoByte(encodedData, outputFile)
+}
+
+func DecodeFile(outputFile string){
+
 }
 
 func main() {
