@@ -12,5 +12,6 @@ To Do:
 - [] Inefficient algorithm (for large input files) needed improvement
 - [] Decoding Function
 
-[zlib](https://www.rfc-editor.org/rfc/rfc1950#section-2.2)
-[pkZip](https://users.cs.jmu.edu/buchhofp/forensics/formats/pkzip.html)
+Some resources:
+[Bit-Packing 101](https://kinematicsoup.com/news/2016/9/6/data-compression-bit-packing-101)
+[Huffman Coding Trees](https://opendsa-server.cs.vt.edu/ODSA/Books/CS3/html/Huffman.html)
