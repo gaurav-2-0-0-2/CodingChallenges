@@ -13,5 +13,5 @@
 - [] Decoding Function
 
 Some resources:
-- [Bit-Packing 101](https://kinematicsoup.com/news/2016/9/6/data-compression-bit-packing-101)<br>
-- [Huffman Coding Trees](https://opendsa-server.cs.vt.edu/ODSA/Books/CS3/html/Huffman.html)
+[Bit-Packing 101](https://kinematicsoup.com/news/2016/9/6/data-compression-bit-packing-101)<br>
+[Huffman Coding Trees](https://opendsa-server.cs.vt.edu/ODSA/Books/CS3/html/Huffman.html)
