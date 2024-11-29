@@ -7,6 +7,7 @@
 - A device that performs data compression is referred to as encoder
 - And one that performs the reversal (decompression) is decoder
 - The header is a part of the file that contains metadata, which describes key information about the file and the compression format. 
+- Need improvement in algorithm
 
 To Do:
 - [] Inefficient algorithm (for large input files) needed improvement

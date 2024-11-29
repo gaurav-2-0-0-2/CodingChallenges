@@ -7,12 +7,57 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"io"
+	"unicode/utf8"
 )
 
 const HEADER_SEPARATER = "\nEND OF HEADER\n"
 const HELP_MESSAGE = "Guide to use Squeez:\n" +
 	"squeez [OPTION] [INPUT FILENAME] [OUTPUT FILENAME]\n" +
 	"Available Options\n -h: Help\n -e: Encoding the file\n -o: Decoding the file in an output file\n"
+
+type Writer struct {
+	data []byte
+	current byte
+	count uint
+}
+
+func CreateBitWriter() Writer {
+	return Writer{
+		data:    make([]byte, 0),
+		current: 0,
+		count:   0,
+	}
+}
+
+func (writer *Writer) WriteBitFromChar(bit rune) error {
+	switch bit {
+	case '1':
+		writer.current = writer.current<<1 | 1
+	case '0':
+		writer.current = writer.current << 1
+	default:
+		return fmt.Errorf("Bit must be 0 or 1")
+	}
+
+	writer.count++
+
+	if writer.count == 8 {
+		writer.appendByte()
+	}
+
+	return nil
+}
+
+func (writer *Writer) appendByte() {
+	writer.data = append(writer.data, writer.current)
+	writer.current = byte(0)
+	writer.count = 0
+}
+
+func (writer *Writer) Bytes() []byte {
+	return writer.data
+}
 
 type HuffTree interface {
 	Freq() int
@@ -78,19 +123,21 @@ func BuildTree(m map[rune]int) HuffTree {
 	return heap.Pop(&trees).(HuffTree)
 }
 
-func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string) map[rune]string {
+func GenerateCodes(tree HuffTree, prefix []byte, encoder map[rune]string, count int) (int, map[rune]string){
 	switch t := tree.(type) {
 	case LeafNode:
 		encoder[t.char] = string(prefix)
+		count = count + 2
 	case HuffNode:
-		GenerateCodes(t.left_child, append(prefix, '0'), encoder)
-		GenerateCodes(t.right_child, append(prefix, '1'), encoder)
+		GenerateCodes(t.left_child, append(prefix, '0'), encoder, count)
+		GenerateCodes(t.right_child, append(prefix, '1'), encoder, count)
+	default: 
+		count = count + 1
 	}
-	return encoder
+	return count, encoder
 }
 
 func WriteToFile(fileContent interface{}, filename string) {
-	fmt.Println("fileContent to write to file: ", fileContent)
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -151,44 +198,60 @@ func CountOccurences(file *os.File) map[rune]int {
 		return m
 }
 
-func packBitsIntoByte(bitstring string, outputFile string){
-  	lenB := len(bitstring) / 8 + 1
-    bs:=make([]byte,lenB)
+func EncodeFile(file *os.File, size int, outputFile string, encoderMap map[rune]string) {
+	bitWriter := CreateBitWriter()
 
-    count,i := 0,0
-    var now byte
-    for _,v:=range bitstring {
-        if count == 8 {
-            bs[i]=now
-            i++
-            now,count = 0,0
-        }
-        now = now << 1 + byte(v-'0')
-        count++
-    }
-    if count!=0 {
-        bs[i]=now << (8-byte(count))
-        i++
-    }
+	_, fileErr := file.Seek(0, io.SeekStart)
+	if fileErr != nil {
+		log.Fatal(fileErr)
+	}
 
-    bs=bs[:i:i]
-	fmt.Println("Byte array", bs)
-	WriteToFile(bs, outputFile)
+	err := encodeBits(bufio.NewReader(file), &bitWriter, encoderMap)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	b := make([]byte, utf8.RuneLen(rune(size)))
+	utf8.EncodeRune(b, rune(size))
+
+	data := make([]byte, 0)
+	data = append(data, b...)
+	data = append(data, bitWriter.Bytes()...)
+
+	WriteToFile(data, outputFile)
 }
 
-func EncodeFile(file *os.File, outputFile string, encoderMap map[rune]string) {
-		var encodedData string
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			for _, char := range scanner.Text() {
-				encodedData += encoderMap[char]	
+func encodeBits(reader *bufio.Reader, bitWriter *Writer, encoderMap map[rune]string)error{
+	for {
+		r, _, err := reader.ReadRune()
+
+		if err != nil {
+			if err == io.EOF{
+				break
 			}
+			log.Fatal(err)	
 		}
 
-		if err := scanner.Err(); err != nil {
+		err = encodeBitCode(encoderMap, r, bitWriter)
+		if err != nil {
+			log.Fatal(err)	
+		}
+	}
+	return nil
+}
+
+func encodeBitCode(encoderMap map[rune]string, r rune, bitWriter *Writer) (error) {
+	for _, value := range encoderMap[r] {
+		err := bitWriter.WriteBitFromChar(value)
+		if err != nil {
 			log.Fatal(err)
 		}
-		packBitsIntoByte(encodedData, outputFile)
+	}
+	return nil
+}
+
+func DecodeFile(file *os.File, encoderMap map[rune]string){
+
 }
 
 func main() {
@@ -200,6 +263,7 @@ func main() {
 	}
 
 	Flag := args[0]
+
 
 	switch Flag {
 	case "-e":
@@ -217,30 +281,14 @@ func main() {
 
 		frequencyMap := CountOccurences(f)
 
-		fmt.Println("Frequency Map")
-		for char, freq := range frequencyMap{
-			fmt.Printf("%c: %d\n",char, freq)
-		}
-
 		huffManTree := BuildTree(frequencyMap)
 
-		fmt.Printf("Encoder Map\n")
-		encoderMap := GenerateCodes(huffManTree, []byte{}, make(map[rune]string))
+		count := 0
+		size, encoderMap := GenerateCodes(huffManTree, []byte{}, make(map[rune]string), count)
 
-		for char, prefixcode := range encoderMap{
-			fmt.Printf("%c: %s\n",char, prefixcode)
-		}
-		
 		WriteHeader(args[2], encoderMap)
-
-		// Rewind the file for the second pass
-		_, err = f.Seek(0, 0) // Reset file pointer to the beginning
-		if err != nil {
-			log.Fatal(err)
-		}
-		EncodeFile(f, args[2], encoderMap)
+		EncodeFile(f, size, args[2], encoderMap)
 	case "-o":
-		// Decoding part
 		fmt.Println("this is an -o flag")
 	case "-h":
 		fmt.Printf(HELP_MESSAGE)
