@@ -8,6 +8,8 @@
 - And one that performs the reversal (decompression) is decoder
 - The header is a part of the file that contains metadata, which describes key information about the file and the compression format. 
 
+[plot](public/final.png)
+
 **To Do:**
 - [x] Inefficient algorithm (for large input files) needed improvement
 - [] Decoding Function
